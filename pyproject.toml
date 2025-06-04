@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "jku-wad"
+version = "0.1.0"
+description = ""
+authors = ["Claude Assistant <claude@anthropic.com>"]
+readme = "README.md"
+packages = [{include = "jku"}]
+
+[tool.poetry.dependencies]
+python = "^3.12 <3.13"
+jupyter = "^1.1.1"
+torch = "^2.7.0"
+numpy = "^2.2.6"
+matplotlib = "^3.10.3"
+pillow = "^11.2.1"
+gymnasium = ">=0.29"
+portpicker = "^1.6.0"
+onnx = "^1.18.0"
+onnx2pytorch = "^0.5.1"
+vizdoom = "^1.2.4"
+pandas = "^2.2.3"
+gym = "^0.26.2"
+einops = "^0.8.1"
+onnxruntime = "^1.22.0"
+imageio = {extras = ["ffmpeg"], version = "^2.37.0"}
+wandb = "^0.19.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
