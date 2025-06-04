@@ -14,6 +14,8 @@ import imageio.v2 as imageio
 from copy import deepcopy
 from typing import Dict, Tuple, List
 import os
+import logging
+from datetime import datetime
 
 # Doom environment imports (assuming these are available)
 from doom_arena import VizdoomMPEnv
@@ -21,6 +23,36 @@ from doom_arena.reward import VizDoomReward
 from vizdoom import ScreenFormat
 from IPython.display import HTML
 import base64
+
+# =============================================================================
+# LOGGING SETUP
+# =============================================================================
+
+def setup_logging():
+    """Set up logging to both file and console"""
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    
+    # Create log filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f'logs/training_log_{timestamp}.txt'
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler()  # This will print to console as well
+        ]
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized. Log file: {log_filename}")
+    return logger
+
+# Initialize logger
+logger = setup_logging()
 
 # =============================================================================
 # CONFIGURATION - OPTIMIZED FOR SPEED
@@ -64,7 +96,7 @@ GRADIENT_ACCUMULATION = 1  # For larger effective batch sizes
 
 # Device setup
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
+logger.info(f"Using device: {device}")
 
 # =============================================================================
 # ENHANCED REWARD FUNCTION
@@ -378,8 +410,8 @@ class NStepDQNAgent:
         
         # Debug print for the first update
         if self.training_step == 0:
-            print(f"Debug: Original state shape: {experiences[0].state.shape}")
-            print(f"Debug: Processed states shape: {states.shape}")
+            logger.info(f"Debug: Original state shape: {experiences[0].state.shape}")
+            logger.info(f"Debug: Processed states shape: {states.shape}")
         
         actions = torch.tensor([e.action for e in experiences], dtype=torch.long, device=self.device)
         rewards = torch.tensor([e.reward for e in experiences], dtype=torch.float32, device=self.device)
@@ -538,11 +570,11 @@ def train_agent(
     best_eval_reward = float('-inf')
     best_model_state = None
     
-    print(f"Starting optimized training for {num_episodes} episodes...")
-    print(f"Device: {agent.device}")
-    print(f"Replay buffer capacity: {agent.replay_buffer.capacity}")
-    print(f"Update frequency: every {UPDATE_FREQUENCY} steps")
-    print(f"Batch size: {BATCH_SIZE}")
+    logger.info(f"Starting optimized training for {num_episodes} episodes...")
+    logger.info(f"Device: {agent.device}")
+    logger.info(f"Replay buffer capacity: {agent.replay_buffer.capacity}")
+    logger.info(f"Update frequency: every {UPDATE_FREQUENCY} steps")
+    logger.info(f"Batch size: {BATCH_SIZE}")
     
     for episode in range(num_episodes):
         # Reset environment and reward function
@@ -583,7 +615,7 @@ def train_agent(
         if episode % target_update_frequency == 0 and episode > 0:
             agent.update_target_network()
             if verbose:
-                print(f"Target network updated at episode {episode}")
+                logger.info(f"Target network updated at episode {episode}")
         
         # Evaluation
         if episode % eval_frequency == 0 and episode > 0:
@@ -598,7 +630,7 @@ def train_agent(
                 torch.save(best_model_state, f'best_model_ep_{episode}.pth')
             
             if verbose:
-                print(f"Episode {episode:4d} | "
+                logger.info(f"Episode {episode:4d} | "
                       f"Train: {episode_reward:6.1f} | "
                       f"Eval: {eval_reward:6.1f} (±{eval_stats['std_reward']:.1f}) | "
                       f"Best: {best_eval_reward:6.1f} | "
@@ -615,24 +647,24 @@ def train_agent(
         # Simple progress display
         if episode % 10 == 0:
             recent_reward = np.mean(episode_rewards[-10:]) if len(episode_rewards) >= 10 else episode_reward
-            print(f"Episode {episode:4d} | Recent avg: {recent_reward:6.1f} | ε: {agent.epsilon:.4f} | Buffer: {len(agent.replay_buffer)}")
+            logger.info(f"Episode {episode:4d} | Recent avg: {recent_reward:6.1f} | ε: {agent.epsilon:.4f} | Buffer: {len(agent.replay_buffer)}")
         
         # Minimal memory cleanup (less frequent)
         if episode % 50 == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
     
     # Final evaluation and save
-    print("\nTraining completed!")
+    logger.info("\nTraining completed!")
     final_eval = evaluate_agent(agent, env, num_episodes=10)
-    print(f"Final evaluation over 10 episodes:")
-    print(f"  Mean reward: {final_eval['mean_reward']:.2f} ± {final_eval['std_reward']:.2f}")
-    print(f"  Max reward: {final_eval['max_reward']:.2f}")
-    print(f"  Min reward: {final_eval['min_reward']:.2f}")
+    logger.info(f"Final evaluation over 10 episodes:")
+    logger.info(f"  Mean reward: {final_eval['mean_reward']:.2f} ± {final_eval['std_reward']:.2f}")
+    logger.info(f"  Max reward: {final_eval['max_reward']:.2f}")
+    logger.info(f"  Min reward: {final_eval['min_reward']:.2f}")
     
     # Load best model if available
     if best_model_state is not None:
         agent.q_network.load_state_dict(best_model_state)
-        print(f"Loaded best model (eval reward: {best_eval_reward:.2f})")
+        logger.info(f"Loaded best model (eval reward: {best_eval_reward:.2f})")
     
     return episode_rewards, eval_rewards, losses, agent
 
@@ -654,9 +686,9 @@ env = VizdoomMPEnv(
     reward_fn=reward_fn,
 )
 
-print(f"Observation space shape: {env.observation_space.shape}")
-print(f"Using {'GRAYSCALE' if USE_GRAYSCALE else 'RGB'} mode")
-print(f"Screen resolution: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+logger.info(f"Observation space shape: {env.observation_space.shape}")
+logger.info(f"Using {'GRAYSCALE' if USE_GRAYSCALE else 'RGB'} mode")
+logger.info(f"Screen resolution: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
 
 agent = NStepDQNAgent(
     input_channels=4,  # Environment provides 4 stacked frames
@@ -670,14 +702,14 @@ agent = NStepDQNAgent(
     device=device
 )
 
-print(f"Agent input channels: 4 (matching environment)")
-print(f"Environment observation shape: {env.observation_space.shape}")
-print(f"Action space: {env.action_space.n}")
-print(f"Network parameters: {sum(p.numel() for p in agent.q_network.parameters()):,}")
+logger.info(f"Agent input channels: 4 (matching environment)")
+logger.info(f"Environment observation shape: {env.observation_space.shape}")
+logger.info(f"Action space: {env.action_space.n}")
+logger.info(f"Network parameters: {sum(p.numel() for p in agent.q_network.parameters()):,}")
 
 # Start optimized training
-print("\n" + "="*60)
-print("STARTING OPTIMIZED TRAINING")
-print("="*60)
+logger.info("\n" + "="*60)
+logger.info("STARTING OPTIMIZED TRAINING")
+logger.info("="*60)
 
 train_agent(agent, env, reward_fn, num_episodes=EPISODES)
