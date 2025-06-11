@@ -47,7 +47,7 @@ def render_episode(player_replays, subsample: int = 1, replay_path: str = None):
         # Add textbox for stats
         stats_text = (
             f"\u2661: {player_stats[pid]['health'][0]}\n"
-            f"\u26A1: {player_stats[pid]['frags'][0]}\n"
+            f"\u26a1: {player_stats[pid]['frags'][0]}\n"
             f"\u2620: {player_stats[pid]['deaths'][0]}"
         )
         ax.text(
@@ -68,7 +68,7 @@ def render_episode(player_replays, subsample: int = 1, replay_path: str = None):
             # Update stats text
             stats_text = (
                 f"\u2661: {player_stats[pid]['health'][frame] - start_health[pid]}\n"
-                f"\u26A1: {player_stats[pid]['frags'][frame] - start_frags[pid]}\n"
+                f"\u26a1: {player_stats[pid]['frags'][frame] - start_frags[pid]}\n"
                 f"\u2620: {player_stats[pid]['deaths'][frame] - start_deaths[pid]}"
             )
             axs[list(player_replays.keys()).index(pid)].texts[0].set_text(stats_text)
